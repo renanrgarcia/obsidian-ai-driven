@@ -15,7 +15,7 @@
 **Workspace And Runtime Bootstrap** - PLANNED
 
 - Create Python project skeleton and dependency management
-- Load configuration from `.env`
+- Load configuration from environment variables with optional local `.env` hydration
 - Resolve vault paths correctly in WSL
 - Provide local startup and restart instructions
 
@@ -41,7 +41,7 @@
 
 **WSL Operational Setup** - PLANNED
 
-- Document Python and dependency installation in WSL
+- Document `uv`, Python, and dependency installation in WSL
 - Document environment variable setup
 - Document vault path mounting and permissions expectations
 - Document how to keep the bot running between terminal sessions
@@ -65,6 +65,7 @@
 - Treat the VPS as the central Git hub, not the live editable vault for every client
 - Keep the bot runtime on WSL during this phase
 - Document the distinction between Git remote, working clone, and runtime process
+- Keep application secrets off the VPS Git hub host
 
 ---
 
@@ -79,6 +80,7 @@
 - Mirror the VPS-hosted primary Git remote to a private GitHub repository every 5-15 minutes
 - Treat GitHub as redundancy and disaster recovery, not the primary write target
 - Document expected mirror lag and recovery workflow
+- Use a dedicated mirror credential with the smallest possible scope
 
 ---
 
@@ -93,6 +95,7 @@
 - Run the Telegram bot from a VPS working clone instead of only from WSL
 - Keep the VPS bot writing through a normal working repository and pushing changes to the primary remote
 - Document runtime-specific environment and operations guidance
+- Move secrets from local `.env` usage to host-managed injection
 
 **WSL Regression Runtime** - PLANNED
 

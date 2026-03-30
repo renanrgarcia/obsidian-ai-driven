@@ -9,7 +9,7 @@ Deliver the first working slice of a private Telegram bot that runs in WSL, upda
 
 ## Requirements
 
-- [TODB-01] The system must run locally inside WSL2 using Python 3.11+ and Telegram long polling.
+- [TODB-01] The system must run locally inside WSL2 using Python 3.13 as the default target, with Python 3.11+ compatibility, and Telegram long polling.
 - [TODB-02] The system must process messages only from the configured `ALLOWED_USER_ID`.
 - [TODB-03] The system must create the current daily note from the configured template shape when the file does not exist.
 - [TODB-04] The created daily note template must contain `## Notes`, `## Tasks`, and `## Habits` sections only.
@@ -23,10 +23,11 @@ Deliver the first working slice of a private Telegram bot that runs in WSL, upda
 - [TODB-12] If no existing habit matches confidently, the capture must fall back to `note_entry`.
 - [TODB-13] Every capture must also be mirrored into `capture-log.md` under the correct day header in reverse chronological order.
 - [TODB-14] Voice notes must be downloaded, transcribed, and handled as normalized text captures.
-- [TODB-15] Voice transcription failures must still write `[Voice note — transcription failed]` to the daily note target and capture log.
-- [TODB-16] The project must provide first-time-friendly WSL setup instructions, including Python installation, environment setup, vault path configuration, and a repeatable startup command.
+- [TODB-15] Voice transcription failures must still write `[Voice note - transcription failed]` to the daily note target and capture log.
+- [TODB-16] The project must provide first-time-friendly WSL setup instructions, including `uv` installation, Python installation, environment setup, vault path configuration, and a repeatable startup command.
 - [TODB-17] The project documentation must define a phased deployment model: v1 local WSL runtime, v2 VPS-hosted primary Git remote, v2.1 GitHub mirroring, and v3 optional VPS bot runtime.
 - [TODB-18] The WSL runtime must remain documented and runnable as a supported fallback and regression path even after a VPS runtime is introduced.
+- [TODB-19] The project documentation must define a phased secrets-management strategy that keeps `.env` local to development and prefers host-managed or repository-managed secret injection for later hosted phases.
 
 ## Non-Goals
 

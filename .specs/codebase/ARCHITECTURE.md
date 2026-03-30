@@ -29,7 +29,7 @@ Planned flow:
 
 **Location:** Planned for `bot.py`
 **Purpose:** Keep Telegram runtime concerns separate from note-writing logic.
-**Implementation:** One startup file calling pure helper functions for note creation, routing, task carry-forward, and capture logging.
+**Implementation:** One startup file calling pure helper functions for config loading, note creation, routing, task carry-forward, and capture logging.
 **Example:** Planned, not yet implemented.
 
 ## Data Flow
@@ -49,10 +49,16 @@ Incoming capture -> compute today's note path -> create from template if missing
 **Structure:**
 
 - Current: README + feature spec only
-- Planned: `bot.py`, `requirements.txt`, `.env.example`, `README.md`, `SETUP.md`, `tests/`
+- Planned: `bot.py`, `pyproject.toml`, `uv.lock`, `.env.example`, `README.md`, `SETUP.md`, `tests/`
 
 **Module boundaries:**
 
 - Entry/runtime: Telegram polling startup
-- Domain logic: routing, note mutation, task carry-forward
+- Domain logic: config validation, routing, note mutation, task carry-forward
 - Integration logic: Gemini transcription, filesystem I/O
+
+## Configuration Strategy
+
+- Runtime configuration contract: process environment variables
+- Local WSL convenience: optional `.env` loaded during startup
+- Later hosted runtimes: inject secrets through the host platform instead of relying on a checked-out `.env`

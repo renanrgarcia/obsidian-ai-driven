@@ -25,10 +25,10 @@ T7 -> T8 -> T9
 
 ### T1: Create Python Project Bootstrap
 
-**What:** Create `requirements.txt`, `.env.example`, `.gitignore`, and a minimal `README.md` update that states the project purpose.
-**Where:** `requirements.txt`, `.env.example`, `.gitignore`, `README.md`
+**What:** Create `pyproject.toml`, `uv.lock`, `.env.example`, `.gitignore`, and a minimal `README.md` update that states the project purpose.
+**Where:** `pyproject.toml`, `uv.lock`, `.env.example`, `.gitignore`, `README.md`
 **Depends on:** None
-**Requirement:** [TODB-01], [TODB-16]
+**Requirement:** [TODB-01], [TODB-16], [TODB-19]
 
 **Tools:**
 
@@ -38,6 +38,7 @@ T7 -> T8 -> T9
 **Done when:**
 
 - [ ] Runtime dependencies are declared
+- [ ] Dependency installation is reproducible through `uv`
 - [ ] Required environment variables are documented
 - [ ] Temp files and virtualenv folders are ignored
 
@@ -45,10 +46,10 @@ T7 -> T8 -> T9
 
 ### T2: Write WSL Setup Guide
 
-**What:** Create `SETUP.md` with first-time-friendly WSL instructions for Python installation, virtualenv setup, environment variables, vault path selection, and manual startup.
+**What:** Create `SETUP.md` with first-time-friendly WSL instructions for `uv` installation, Python installation, environment variables, vault path selection, and manual startup.
 **Where:** `SETUP.md`
 **Depends on:** T1
-**Requirement:** [TODB-16], [TODB-18]
+**Requirement:** [TODB-16], [TODB-18], [TODB-19]
 
 **Tools:**
 
@@ -59,7 +60,7 @@ T7 -> T8 -> T9
 
 - [ ] A first-time WSL user can follow the steps without guessing missing commands
 - [ ] The guide explains the Windows path to WSL path conversion model
-- [ ] The guide includes a concrete example startup command
+- [ ] The guide includes concrete `uv sync` and `uv run` commands
 - [ ] The guide makes clear that WSL remains a supported fallback even after future VPS work
 
 ---
@@ -189,7 +190,7 @@ T7 -> T8 -> T9
 **What:** Perform and document the manual WSL verification flow for environment setup, startup, and live Telegram capture checks.
 **Where:** `SETUP.md` and final verification notes
 **Depends on:** T2, T7, T8
-**Requirement:** [TODB-16], [TODB-18]
+**Requirement:** [TODB-16], [TODB-18], [TODB-19]
 
 **Tools:**
 
@@ -206,10 +207,10 @@ T7 -> T8 -> T9
 
 ### T10: Document Future VPS And Mirror Topology
 
-**What:** Document the later-phase deployment model covering VPS-hosted primary Git, GitHub mirroring, and the retained WSL runtime fallback.
+**What:** Document the later-phase deployment model covering VPS-hosted primary Git, GitHub mirroring, retained WSL runtime fallback, and the secrets-management strategy for each phase.
 **Where:** `SETUP.md` or a dedicated deployment document
 **Depends on:** T2
-**Requirement:** [TODB-17], [TODB-18]
+**Requirement:** [TODB-17], [TODB-18], [TODB-19]
 
 **Tools:**
 
@@ -221,3 +222,4 @@ T7 -> T8 -> T9
 - [ ] The docs explain the difference between the primary VPS Git remote, GitHub redundancy mirror, and local working vaults
 - [ ] The docs explain that the VPS bot runtime is additive, not a forced replacement for WSL
 - [ ] The docs give a clear rollback path from VPS runtime to WSL runtime
+- [ ] The docs recommend a free-first secrets approach for each deployment phase

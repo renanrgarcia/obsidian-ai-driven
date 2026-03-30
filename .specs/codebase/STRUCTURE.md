@@ -1,6 +1,6 @@
 # Structure
 
-**Analyzed:** 2026-03-29
+**Analyzed:** 2026-03-30
 
 ## Current Repository Layout
 
@@ -11,7 +11,8 @@
 ## Planned Implementation Layout
 
 - `bot.py` - entrypoint and orchestration
-- `requirements.txt` - runtime dependencies
+- `pyproject.toml` - project metadata and runtime dependencies
+- `uv.lock` - locked dependency graph for reproducible installs
 - `.env.example` - required and optional configuration
 - `.gitignore` - local environment and temp file exclusions
 - `README.md` - project overview

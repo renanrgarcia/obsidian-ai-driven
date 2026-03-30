@@ -10,7 +10,7 @@ Start with a single `bot.py` file, but enforce internal separation with small fu
 
 ### 1. Configuration Loader
 
-- Reads required env vars from `.env`.
+- Reads required env vars from the process environment and can optionally hydrate them from `.env` in local WSL development.
 - Resolves WSL-friendly filesystem paths.
 - Validates required configuration on startup.
 
@@ -73,7 +73,7 @@ Start with a single `bot.py` file, but enforce internal separation with small fu
 ## WSL Deployment Approach
 
 - Keep the Obsidian vault on an accessible path that WSL can read and write.
-- Run the bot manually first from a WSL shell using a Python virtual environment.
+- Run the bot manually first from a WSL shell using `uv`.
 - After manual verification, optionally add a `systemd --user` service or `tmux`-based background run.
 
 ## Multi-Phase Deployment Approach
@@ -82,22 +82,26 @@ Start with a single `bot.py` file, but enforce internal separation with small fu
 
 - Windows Obsidian and the WSL bot share the same local vault.
 - Git synchronization can stay on the current simple remote.
+- Secrets stay local and may be loaded from `.env`.
 
 ### V2
 
 - The primary Git remote moves to a VPS-hosted Git repository.
 - Each device still uses its own local working clone.
 - The WSL bot continues to run locally and write to the local vault.
+- The VPS Git host should avoid storing bot runtime secrets because it is not yet an application host.
 
 ### V2.1
 
 - The VPS-hosted Git remote mirrors to a private GitHub repository every 5-15 minutes.
 - GitHub serves as redundancy, not the primary write target.
+- Mirror credentials should be isolated from bot runtime credentials.
 
 ### V3
 
 - A VPS runtime for the bot is added using a working clone on the VPS.
 - The WSL runtime remains documented and runnable for regression and fallback use.
+- Runtime secrets should move to host-managed injection rather than a repo-local `.env`.
 
 ## Why This Shape Fits A First WSL Deployment
 

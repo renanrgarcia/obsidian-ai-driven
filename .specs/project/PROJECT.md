@@ -16,8 +16,9 @@
 **Core:**
 
 - Framework: `python-telegram-bot` with long polling
-- Language: Python 3.11+
+- Language: Python 3.13 target, Python 3.11+ compatibility floor
 - Runtime: WSL2 Linux environment on a Windows host in v1, with a future VPS runtime option
+- Package management: `uv` with `pyproject.toml` and `uv.lock`
 - Storage: Obsidian vault files on disk
 
 **Key dependencies:**
@@ -26,6 +27,13 @@
 - `google-genai`
 - `python-dotenv`
 - Python standard library (`pathlib`, `logging`, `tempfile`, `zoneinfo`)
+
+## Secrets Strategy
+
+- V1 local WSL: `.env` is acceptable as a local-only convenience layer because the machine is both the dev box and the runtime.
+- V2 VPS Git hub: keep bot secrets off the VPS Git host if it is only serving as the primary Git remote.
+- V2.1 GitHub mirror: use repository-managed secrets or a dedicated deploy key for mirror automation, not a checked-in credential file.
+- V3 VPS bot runtime: prefer host-managed secret injection; free options come first, such as a root-owned env file outside the repo or `pass` + GPG, with managed secret stores as a later upgrade path.
 
 ## Scope
 
@@ -52,4 +60,5 @@
 
 - Timeline: Optimize for first usable version before adding polish or automation.
 - Technical: Must work well in WSL2 with a filesystem-backed Obsidian vault and minimal moving parts, and must remain portable to a VPS-hosted runtime later.
+- Security: Keep the runtime configuration environment-based so secrets can move from local `.env` to host-managed injection without code-path churn.
 - Resources: Personal project, first WSL deployment, so setup and recovery steps must stay simple.
