@@ -1,0 +1,25 @@
+[project]
+name = "daily-notes-bot"
+version = "0.1.0"
+description = "Private Telegram bot that writes captures into Obsidian daily notes from WSL."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "python-telegram-bot>=22.0,<23.0",
+  "google-genai>=1.11.0,<2.0.0",
+]
+
+[project.scripts]
+daily-notes-bot = "daily_notes_bot.main:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
