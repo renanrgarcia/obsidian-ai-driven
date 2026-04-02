@@ -18,7 +18,7 @@ from daily_notes_bot.services.daily_notes import (
 )
 from daily_notes_bot.services.markdown import parse_sections
 from daily_notes_bot.services.routing import route_capture
-from daily_notes_bot.telegram.handlers import process_message
+from daily_notes_bot.telegram.handlers import handle_message, process_message
 
 
 class DailyNotesBotTests(unittest.TestCase):
@@ -255,6 +255,25 @@ class DailyNotesBotTests(unittest.TestCase):
             sections["## Project Tasks"],
             ["- [ ] Do lab: deploy API to App Service for [[AZ-204 Dashboard]]"],
         )
+
+    def test_handle_message_reads_config_from_context_application(self) -> None:
+        message = SimpleNamespace(text="capture", voice=None, reply_text=AsyncMock())
+        update = SimpleNamespace(
+            effective_message=message,
+            effective_user=SimpleNamespace(id=1),
+        )
+        context = SimpleNamespace(
+            application=SimpleNamespace(bot_data={"config": self.config}),
+        )
+
+        with patch(
+            "daily_notes_bot.telegram.handlers.process_message",
+            new=AsyncMock(return_value="task"),
+        ) as process_message_mock:
+            self._run_async(handle_message(update, context))
+
+        process_message_mock.assert_awaited_once_with(message, self.config)
+        message.reply_text.assert_awaited_once_with("Captured to task.")
 
     def test_write_capture_log_prepends_newer_day(self) -> None:
         log_path = self.vault_path / "capture-log.md"

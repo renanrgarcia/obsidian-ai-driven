@@ -60,8 +60,7 @@ async def process_message(message, config: Config) -> str:
 
 
 async def handle_message(update, context) -> None:
-    del context
-    config: Config = update.application.bot_data["config"]
+    config: Config = context.application.bot_data["config"]
     message = update.effective_message
     user = update.effective_user
 

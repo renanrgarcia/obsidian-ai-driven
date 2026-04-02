@@ -8,6 +8,9 @@ This document describes the intended WSL layout for development and runtime. The
 ~/projects/
   obsidian-ai-driven/   # umbrella repo clone, branch: develop
 
+env/
+  daily-notes-bot.dev.env
+
 ~/apps/
   obsidian-ai-driven/   # umbrella repo clone, branch: main
   venvs/
@@ -19,6 +22,7 @@ This document describes the intended WSL layout for development and runtime. The
 ## Why This Layout
 
 - `~/projects/...` is for coding and test work.
+- `~/projects/env/...` keeps development secrets outside the repo.
 - `~/apps/...` is for runtime execution.
 - `~/apps/venvs/...` keeps the runtime Python environment outside the repo.
 - `~/apps/env/...` keeps runtime secrets outside the repo.
@@ -45,6 +49,7 @@ If your distro does not offer `python3.13`, Python 3.11+ is acceptable.
 
 ```bash
 mkdir -p ~/projects/obsidian-ai-driven
+mkdir -p ~/projects/env
 mkdir -p ~/apps/venvs
 mkdir -p ~/apps/env
 ```
@@ -94,9 +99,60 @@ uv sync --extra dev
 pytest
 ```
 
-This clone is for editing, testing, committing, and pushing.
+This clone is for editing, testing, and validating changes before they go to production.
 
-## 6. Prepare the Runtime Clone
+## 6. Create the Development Env File
+
+Development env file:
+
+```text
+~/projects/env/daily-notes-bot.dev.env
+```
+
+Create and secure it:
+
+```bash
+mkdir -p ~/projects/env
+cp ~/projects/obsidian-ai-driven/daily-notes-bot/.env.example ~/projects/env/daily-notes-bot.dev.env
+chmod 600 ~/projects/env/daily-notes-bot.dev.env
+```
+
+Edit it with your local values:
+
+```bash
+nano ~/projects/env/daily-notes-bot.dev.env
+```
+
+## 7. Up and Run Development First
+
+Start from the development clone on `develop`:
+
+```bash
+cd ~/projects/obsidian-ai-driven/daily-notes-bot
+git switch develop
+uv sync --extra dev
+pytest
+```
+
+Then load the development env file and run the bot:
+
+```bash
+cd ~/projects/obsidian-ai-driven/daily-notes-bot
+set -a
+source ~/projects/env/daily-notes-bot.dev.env
+set +a
+uv run daily-notes-bot
+```
+
+Troubleshooting:
+
+- If `source` prints `: command not found`, the env file likely has Windows line endings. Fix it with `sed -i 's/\r$//' ~/projects/env/daily-notes-bot.dev.env`.
+- Each env line must use `KEY=value` with no spaces around `=`.
+- Verify the file loaded correctly with `echo "$DAILY_NOTES_DIR"` after `source`.
+
+Use this flow while coding, testing, committing, and pushing from `develop`.
+
+## 8. Prepare the Runtime Clone
 
 ```bash
 source ~/apps/venvs/daily-notes-bot/bin/activate
@@ -106,7 +162,7 @@ uv sync --active
 
 Use `--active` because the virtual environment lives outside the repo.
 
-## 7. Create the Runtime Env File
+## 9. Create the Runtime Env File
 
 Runtime env file:
 
@@ -114,16 +170,18 @@ Runtime env file:
 ~/apps/env/daily-notes-bot.env
 ```
 
-Populate it from `.env.example`:
+Create and secure it:
 
 ```bash
+mkdir -p ~/apps/env
 cp ~/apps/obsidian-ai-driven/daily-notes-bot/.env.example ~/apps/env/daily-notes-bot.env
+chmod 600 ~/apps/env/daily-notes-bot.env
 ```
 
-Secure it:
+Edit it with your production values:
 
 ```bash
-chmod 600 ~/apps/env/daily-notes-bot.env
+nano ~/apps/env/daily-notes-bot.env
 ```
 
 `chmod 600` means only the file owner can read or change it.
@@ -142,7 +200,27 @@ Optional values:
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL`
 
-## 8. First Manual Runtime Test
+If the production env file was edited from Windows, normalize line endings before sourcing it:
+
+```bash
+sed -i 's/\r$//' ~/apps/env/daily-notes-bot.env
+```
+
+## 10. Up and Run Production
+
+First make sure the tested changes are already promoted from `develop` to `main`.
+
+Update the runtime clone and dependencies:
+
+```bash
+source ~/apps/venvs/daily-notes-bot/bin/activate
+cd ~/apps/obsidian-ai-driven/daily-notes-bot
+git switch main
+git pull
+uv sync --active
+```
+
+Then load the runtime env file and start the bot:
 
 ```bash
 source ~/apps/venvs/daily-notes-bot/bin/activate
@@ -153,7 +231,7 @@ set +a
 uv run daily-notes-bot
 ```
 
-## 9. Development Workflow
+## 11. Development Workflow
 
 Development clone:
 
@@ -168,7 +246,7 @@ Then commit and push from that clone.
 
 Promote tested changes from `develop` to `main` through your normal Git flow.
 
-## 10. Manual Deployment Workflow
+## 12. Manual Deployment Workflow
 
 Runtime clone:
 
@@ -189,7 +267,7 @@ set +a
 uv run daily-notes-bot
 ```
 
-## 11. Obsidian Vault Path
+## 13. Obsidian Vault Path
 
 If your vault is still on Windows, use the WSL-mounted path.
 
@@ -205,7 +283,7 @@ WSL path:
 /mnt/c/Users/your-user/Documents/ObsidianVault
 ```
 
-## 12. What Is Deferred
+## 14. What Is Deferred
 
 These are intentionally not part of this phase:
 
