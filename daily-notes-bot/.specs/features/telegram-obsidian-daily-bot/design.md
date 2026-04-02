@@ -4,45 +4,39 @@
 
 ## Implementation Shape
 
-Start with a single `bot.py` file, but enforce internal separation with small functions and typed helper structures.
+Keep the current small module structure, but change the domain contract from a generic `Tasks` bucket to a structured daily-note routing flow that can target the current or a future daily note before any file mutation.
 
 ## Components
 
-### 1. Configuration Loader
+### Configuration Loader
 
-- Reads required env vars from the process environment and can optionally hydrate them from `.env` in local WSL development.
-- Resolves WSL-friendly filesystem paths.
-- Validates required configuration on startup.
+- Loads vault path, daily notes directory, timezone, and Gemini credentials from environment-backed config.
 
-### 2. Telegram Entrypoint
+### Capture Normalizer
 
-- Registers text and voice handlers.
-- Rejects unauthorized users early.
-- Delegates business logic to helper functions.
+- Converts Telegram text or voice input into `CaptureRequest`.
+- Ensures timestamps are normalized to the configured timezone before routing.
 
-### 3. Capture Normalizer
+### Daily-Note Router
 
-- Converts Telegram updates into a normalized capture object.
-- Downloads voice notes to a temp path when needed.
-- Invokes transcription for voice messages.
+- Checks the current daily note habits first, falling back to the default habit template when the note does not exist yet.
+- Uses Gemini for non-habit captures to classify `task` vs `note_entry` and extract `task_text`, `target_date`, and `target_time`.
+- Converts Gemini output into a strict `RouteDecision`.
+- Falls back to `note_entry` when the response is invalid or lacks a firm day.
 
-### 4. AI Router
+### Daily Note Engine
 
-- Receives normalized text.
-- Returns a strict structured route: target type plus optional habit label.
-- Defaults to `note_entry` on parse or confidence failure.
+- Creates `5.Daily Notes/YYYY-MM-DD.md` on demand with the five-section template and seeded habits.
+- Writes notes only to `## Notes`, `## Today`, `## Scheduled`, `## Project Tasks`, or `## Habits`.
+- Does not carry forward unfinished work from previous days.
 
-### 5. Daily Note Engine
+### Telegram Handler Flow
 
-- Computes note path from local date in the configured timezone.
-- Creates missing notes from the template.
-- Copies unfinished tasks from the previous day when creating a new note.
-- Applies `Notes`, `Tasks`, or `Habits` mutations safely.
-
-### 6. Capture Log Writer
-
-- Ensures `capture-log.md` exists.
-- Inserts entries under the correct date header in reverse chronological order.
+- Normalizes the capture.
+- Requests a `RouteDecision`.
+- Ensures the target daily note exists for `route.target_date`.
+- Applies the note, task, or habit mutation.
+- Mirrors the capture into `capture-log.md`.
 
 ## Data Structures
 
@@ -51,60 +45,20 @@ Start with a single `bot.py` file, but enforce internal separation with small fu
 - `timestamp`
 - `raw_text`
 - `normalized_text`
-- `source_type` (`text` or `voice`)
+- `source_type`
 
 ### RouteDecision
 
-- `target_type` (`note_entry`, `new_task`, `habit_check`)
-- `matched_habit_text` (optional)
+- `target_type` (`note_entry`, `task`, `habit_check`)
+- `target_date`
+- `target_section` (`## Today`, `## Scheduled`, `## Project Tasks`, or `None`)
+- `scheduled_time`
+- `task_text`
+- `matched_habit_text`
 
-## Sequence
+## Section Selection Rules
 
-1. Telegram update arrives.
-2. Authorization passes.
-3. Update is normalized into `CaptureRequest`.
-4. Voice input is transcribed if needed.
-5. AI router returns `RouteDecision`.
-6. Daily note engine ensures today's note exists and rolls unfinished tasks forward if needed.
-7. Daily note engine applies the routed mutation.
-8. Capture log writer mirrors the capture.
-9. Handler logs the outcome.
-
-## WSL Deployment Approach
-
-- Keep the Obsidian vault on an accessible path that WSL can read and write.
-- Run the bot manually first from a WSL shell using `uv`.
-- After manual verification, optionally add a `systemd --user` service or `tmux`-based background run.
-
-## Multi-Phase Deployment Approach
-
-### V1
-
-- Windows Obsidian and the WSL bot share the same local vault.
-- Git synchronization can stay on the current simple remote.
-- Secrets stay local and may be loaded from `.env`.
-
-### V2
-
-- The primary Git remote moves to a VPS-hosted Git repository.
-- Each device still uses its own local working clone.
-- The WSL bot continues to run locally and write to the local vault.
-- The VPS Git host should avoid storing bot runtime secrets because it is not yet an application host.
-
-### V2.1
-
-- The VPS-hosted Git remote mirrors to a private GitHub repository every 5-15 minutes.
-- GitHub serves as redundancy, not the primary write target.
-- Mirror credentials should be isolated from bot runtime credentials.
-
-### V3
-
-- A VPS runtime for the bot is added using a working clone on the VPS.
-- The WSL runtime remains documented and runnable for regression and fallback use.
-- Runtime secrets should move to host-managed injection rather than a repo-local `.env`.
-
-## Why This Shape Fits A First WSL Deployment
-
-- One runtime process is easier to start, stop, and troubleshoot.
-- File-backed storage avoids database setup.
-- Manual startup plus clear docs lowers operational risk while you learn the environment.
+- `target_time` present -> `## Scheduled`
+- no `target_time` and wiki link present -> `## Project Tasks`
+- no `target_time` and no wiki link -> `## Today`
+- invalid or no firm day -> `note_entry` in the current day `## Notes`

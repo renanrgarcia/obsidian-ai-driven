@@ -1,43 +1,36 @@
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 from daily_notes_bot.config import Config
-from daily_notes_bot.models import CaptureRequest
+from daily_notes_bot.models import CaptureRequest, RouteDecision
 from daily_notes_bot.services.markdown import TASK_PATTERN, parse_sections, render_sections
 from daily_notes_bot.services.text import normalize_habit_label
+
+DEFAULT_HABITS = (
+    "H\u00b2O 1.5L",
+    "H\u00b2O 3L",
+    "H\u00b2O 4.5L",
+    "Dexilant jejum",
+    "Dexilant jantar",
+    "Valsartana noite",
+)
+
+TASK_SECTIONS = {"## Today", "## Scheduled", "## Project Tasks"}
 
 
 def daily_note_path(config: Config, target_date: date) -> Path:
     return config.daily_notes_root / f"{target_date.isoformat()}.md"
 
 
-def read_previous_unfinished_tasks(config: Config, target_date: date) -> list[str]:
-    previous_path = daily_note_path(config, target_date - timedelta(days=1))
-    if not previous_path.exists():
-        return []
-
-    sections = parse_sections(previous_path.read_text(encoding="utf-8"))
-    unfinished_tasks: list[str] = []
-    for line in sections["## Tasks"]:
-        match = TASK_PATTERN.match(line)
-        if not match:
-            continue
-        if match.group("done").lower() == "x":
-            continue
-        if not match.group("body").strip():
-            continue
-        unfinished_tasks.append(line)
-
-    return unfinished_tasks
-
-
-def build_daily_note_content(carry_forward_tasks: list[str]) -> str:
+def build_daily_note_content(target_date: date) -> str:
     sections = {
         "## Notes": [],
-        "## Tasks": list(carry_forward_tasks),
-        "## Habits": [],
+        "## Today": [],
+        "## Scheduled": [],
+        "## Project Tasks": [],
+        "## Habits": [f"- [ ] {habit}" for habit in DEFAULT_HABITS],
     }
-    return render_sections(sections)
+    return render_sections(sections, title=f"# {target_date.isoformat()}")
 
 
 def ensure_daily_note(config: Config, target_date: date) -> Path:
@@ -47,8 +40,7 @@ def ensure_daily_note(config: Config, target_date: date) -> Path:
     if note_path.exists():
         return note_path
 
-    carry_forward_tasks = read_previous_unfinished_tasks(config, target_date)
-    note_path.write_text(build_daily_note_content(carry_forward_tasks), encoding="utf-8")
+    note_path.write_text(build_daily_note_content(target_date), encoding="utf-8")
     return note_path
 
 
@@ -57,7 +49,7 @@ def load_note_sections(note_path: Path) -> dict[str, list[str]]:
 
 
 def save_note_sections(note_path: Path, sections: dict[str, list[str]]) -> None:
-    note_path.write_text(render_sections(sections), encoding="utf-8")
+    note_path.write_text(render_sections(sections, title=f"# {note_path.stem}"), encoding="utf-8")
 
 
 def insert_note_entry(note_path: Path, capture: CaptureRequest) -> None:
@@ -66,21 +58,18 @@ def insert_note_entry(note_path: Path, capture: CaptureRequest) -> None:
     save_note_sections(note_path, sections)
 
 
-def insert_new_task(
-    note_path: Path,
-    capture: CaptureRequest,
-    *,
-    created_today: bool,
-    carry_forward_count: int = 0,
-) -> None:
+def insert_task(note_path: Path, route: RouteDecision) -> None:
+    if route.target_section not in TASK_SECTIONS:
+        raise ValueError(f"Unsupported task section: {route.target_section}")
+    if not route.task_text:
+        raise ValueError("Task route requires task_text")
+
     sections = load_note_sections(note_path)
-    new_task_line = f"- [ ] {capture.normalized_text}"
+    new_task_line = f"- [ ] {route.task_text}"
+    if route.target_section == "## Scheduled" and route.scheduled_time:
+        new_task_line = f"- [ ] {route.scheduled_time} {route.task_text}"
 
-    insertion_index = 0
-    if created_today:
-        insertion_index = min(carry_forward_count, len(sections["## Tasks"]))
-
-    sections["## Tasks"].insert(insertion_index, new_task_line)
+    sections[route.target_section].append(new_task_line)
     save_note_sections(note_path, sections)
 
 

@@ -8,12 +8,11 @@ from daily_notes_bot.services.capture_log import write_capture_log
 from daily_notes_bot.services.daily_notes import (
     daily_note_path,
     ensure_daily_note,
-    insert_new_task,
+    insert_task,
     insert_note_entry,
-    read_previous_unfinished_tasks,
     update_habit_checkbox,
 )
-from daily_notes_bot.services.routing import heuristic_route_capture
+from daily_notes_bot.services.routing import route_capture
 from daily_notes_bot.telegram.authorization import is_authorized_user
 from daily_notes_bot.telegram.normalizer import normalize_capture_from_message
 
@@ -25,17 +24,9 @@ def apply_route(
     note_path: Path,
     capture: CaptureRequest,
     route: RouteDecision,
-    *,
-    created_today: bool,
-    carry_forward_count: int,
 ) -> str:
-    if route.target_type == "new_task":
-        insert_new_task(
-            note_path,
-            capture,
-            created_today=created_today,
-            carry_forward_count=carry_forward_count,
-        )
+    if route.target_type == "task":
+        insert_task(note_path, route)
         return "task"
 
     if route.target_type == "habit_check" and route.matched_habit_text:
@@ -48,20 +39,13 @@ def apply_route(
 
 async def process_message(message, config: Config) -> str:
     capture = await normalize_capture_from_message(message, config)
-    note_path = daily_note_path(config, capture.timestamp.date())
-    created_today = not note_path.exists()
-    carry_forward_count = 0
-    if created_today:
-        carry_forward_count = len(read_previous_unfinished_tasks(config, capture.timestamp.date()))
-
-    ensure_daily_note(config, capture.timestamp.date())
-    route = heuristic_route_capture(capture.normalized_text, note_path)
+    route = route_capture(capture, config)
+    note_path = daily_note_path(config, route.target_date)
+    ensure_daily_note(config, route.target_date)
     outcome = apply_route(
         note_path,
         capture,
         route,
-        created_today=created_today,
-        carry_forward_count=carry_forward_count,
     )
     write_capture_log(config.capture_log_path, capture)
     LOGGER.info(

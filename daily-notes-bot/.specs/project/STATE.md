@@ -2,52 +2,28 @@
 
 ## Current Focus
 
-- Create the first implementation slice for a local WSL-based Telegram-to-Obsidian bot.
-- Keep the first release simple enough for a first-time WSL deployment.
+- Adapt daily-note processing to the new five-section workflow.
+- Keep daily notes as the only scheduling surface handled by the bot.
 
 ## Decisions
 
-- Use Python 3.13 as the default project target, with Python 3.11+ compatibility, plus `python-telegram-bot` and Gemini-based transcription.
-- Keep v1 as a single-process long-polling bot running in WSL2.
-- In v1, Windows Obsidian and the WSL bot share the same local vault via the WSL-mounted Windows path.
-- Use `uv` as the package, lock, and execution toolchain.
-- Daily notes use `Notes`, `Tasks`, and `Habits` sections only.
-- General captures route to `Notes`; actionable items route to `Tasks`; habit completions update existing habit checkboxes.
-- When a daily note is created, unfinished tasks from the previous day are carried forward.
-- Every capture is mirrored into `capture-log.md` regardless of routing outcome.
-- In v2, the primary Git remote moves to the VPS, but working vaults remain local to each device.
-- In v2.1, the VPS-hosted Git remote is mirrored to a private GitHub repository every 5-15 minutes for redundancy.
-- In v3, the bot may run on the VPS, but the WSL runtime remains documented and supported for regression testing and fallback operation.
-- Keep the application runtime contract environment-based, with local `.env` support only as a development convenience.
+- Daily notes use `# YYYY-MM-DD` plus `## Notes`, `## Today`, `## Scheduled`, `## Project Tasks`, and `## Habits`.
+- New daily notes start clean except for the default habits checklist.
+- Unfinished tasks do not roll forward automatically.
+- Habit matching remains a same-day action against the current daily note habits.
+- Non-habit captures use Gemini to decide whether they are firm dated tasks or simple note entries.
+- A timed task goes to `## Scheduled`.
+- An untimed task with a wiki link goes to `## Project Tasks`.
+- An untimed task without a wiki link goes to `## Today`.
+- If routing is ambiguous or no firm day is found, the capture falls back to the current day `## Notes`.
 
 ## Assumptions
 
-- The Obsidian vault is reachable from WSL through a Linux path such as `/mnt/c/...` or a native Linux path.
-- The project will begin with a single `bot.py` file before later modularization.
-- The user needs explicit WSL setup and run instructions because this is their first deployment in that environment.
-- A future VPS deployment will use a working clone for runtime file edits rather than editing a bare Git repo directly.
-
-## Blockers
-
-- No application code exists yet.
-- No dependency manifest or setup files exist yet.
-- Final WSL vault path is not yet committed in code.
+- The bot only mutates daily notes and the capture log.
+- Users provide any desired wiki links directly in the task text.
+- A task without a firm day should not be written into a daily-task section.
 
 ## Next Actions
 
-- Implement project bootstrap files and dependency configuration.
-- Build the daily note engine before Telegram handler complexity grows.
-- Add a minimal WSL operations guide as part of the first functional slice.
-- Document the secrets-management plan per deployment phase before hosted runtime work begins.
-- Keep future deployment docs structured so the VPS path adds to the WSL path instead of replacing it.
-
-## Deferred Ideas
-
-- `systemd` service automation after the bot works manually.
-- Modularizing into `telegram`, `transcription`, and `journal` packages after the first slice is stable.
-- CI automation after local reliability is proven.
-- Automated VPS-to-GitHub mirror health checks.
-
-## Preferences
-
-- Prefer concrete operational instructions over abstract deployment advice.
+- Keep test coverage centered on note creation, route conversion, and future-note writes.
+- Leave PARA note management outside daily notes for a later phase, if needed.

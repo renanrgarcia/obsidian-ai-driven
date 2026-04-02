@@ -1,44 +1,39 @@
 # Telegram Obsidian Daily Bot Spec
 
-**Status:** Draft
-**Source:** Adapted from `.spec/features/telegram-obsidian-journal/spec.md`
+**Status:** Updated
 
 ## Goal
 
-Deliver the first working slice of a private Telegram bot that runs in WSL, updates an Obsidian daily note with `Notes`, `Tasks`, and `Habits`, and keeps an audit log of all captures.
+Deliver a private Telegram-to-Obsidian flow that treats `5.Daily Notes` as the only scheduling surface, using dated daily notes for execution while keeping note routing and task placement deterministic.
 
 ## Requirements
 
-- [TODB-01] The system must run locally inside WSL2 using Python 3.13 as the default target, with Python 3.11+ compatibility, and Telegram long polling.
-- [TODB-02] The system must process messages only from the configured `ALLOWED_USER_ID`.
-- [TODB-03] The system must create the current daily note from the configured template shape when the file does not exist.
-- [TODB-04] The created daily note template must contain `## Notes`, `## Tasks`, and `## Habits` sections only.
-- [TODB-05] When creating a new daily note, the system must carry forward unchecked tasks from the previous calendar day's `## Tasks` section.
-- [TODB-06] Completed tasks and empty placeholder task lines must not be carried forward.
-- [TODB-07] Every normalized capture must be routed to exactly one of: `note_entry`, `new_task`, or `habit_check`.
-- [TODB-08] Ambiguous routing results must fall back to `note_entry`.
-- [TODB-09] `note_entry` captures must be inserted at the top of the `## Notes` section as `- HH:MM: message text`.
-- [TODB-10] `new_task` captures must be inserted into `## Tasks` as unchecked checkbox items below carried-forward tasks and above older current-day tasks.
-- [TODB-11] `habit_check` captures must update only an existing matching habit item under `## Habits`.
-- [TODB-12] If no existing habit matches confidently, the capture must fall back to `note_entry`.
-- [TODB-13] Every capture must also be mirrored into `capture-log.md` under the correct day header in reverse chronological order.
-- [TODB-14] Voice notes must be downloaded, transcribed, and handled as normalized text captures.
-- [TODB-15] Voice transcription failures must still write `[Voice note - transcription failed]` to the daily note target and capture log.
-- [TODB-16] The project must provide first-time-friendly WSL setup instructions, including `uv` installation, Python installation, environment setup, vault path configuration, and a repeatable startup command.
-- [TODB-17] The project documentation must define a phased deployment model: v1 local WSL runtime, v2 VPS-hosted primary Git remote, v2.1 GitHub mirroring, and v3 optional VPS bot runtime.
-- [TODB-18] The WSL runtime must remain documented and runnable as a supported fallback and regression path even after a VPS runtime is introduced.
-- [TODB-19] The project documentation must define a phased secrets-management strategy that keeps `.env` local to development and prefers host-managed or repository-managed secret injection for later hosted phases.
+- [TODB-01] The system must create a missing daily note at `5.Daily Notes/YYYY-MM-DD.md` with the title `# YYYY-MM-DD`.
+- [TODB-02] The created daily note template must contain `## Notes`, `## Today`, `## Scheduled`, `## Project Tasks`, and `## Habits` in that order.
+- [TODB-03] New daily notes must seed `## Habits` with the default checklist items for water and medication tracking.
+- [TODB-04] The system must not carry unfinished tasks forward automatically from the previous day.
+- [TODB-05] Every normalized capture must resolve to exactly one route kind: `note_entry`, `task`, or `habit_check`.
+- [TODB-06] Habit routing must only mark an existing matching checkbox under `## Habits`; unmatched habit attempts must fall back to `note_entry`.
+- [TODB-07] `note_entry` captures must be inserted at the top of the current day `## Notes` section as `- HH:MM: message text`.
+- [TODB-08] For non-habit captures, the system must use Gemini to classify whether the capture is a dated task or a note entry and to extract `task_text`, `target_date`, and optional `target_time`.
+- [TODB-09] If Gemini output is missing, invalid, ambiguous, or does not produce a firm target day, the capture must fall back to `note_entry` on the current day.
+- [TODB-10] A task with a firm target day must create or open the matching daily note and write the task there.
+- [TODB-11] A task with a firm target time must be written under `## Scheduled` as `- [ ] HH:MM task text`.
+- [TODB-12] A task with a firm day but no time must be written under `## Project Tasks` when its text contains a wiki link like `[[Project Note]]`.
+- [TODB-13] A task with a firm day but no time and no wiki link must be written under `## Today`.
+- [TODB-14] The system must preserve user-provided wiki links verbatim when writing task text.
+- [TODB-15] Every capture must still be mirrored into `capture-log.md` under the capture day header in reverse chronological order.
 
 ## Non-Goals
 
-- Multi-user support
-- Group chats
-- New habit creation from free-form captures
-- Production VPS deployment in the first slice
-- Replacing WSL entirely in future phases
+- Mutating `0.Inbox`, `1.Projects`, `2.Areas`, `3.Resources`, or `9.Archive`
+- Maintaining parallel copies of open tasks across project notes and daily notes
+- Automatic backlog cleanup or project-note synchronization
+- Automatic task rollover between daily notes
 
 ## Acceptance Snapshot
 
-- A first-time WSL user can install dependencies, set env vars, start the bot, and see a Telegram text message appear in the correct daily note section.
-- A new day note is created automatically with unfinished tasks copied from the prior day.
-- A voice note failure does not lose the capture.
+- A new daily note is created with the five-section template and seeded habits.
+- A capture like “next Wednesday at 7pm budget review” lands in `5.Daily Notes/2026-04-08.md` under `## Scheduled`.
+- A capture like “review [[AZ-204 Dashboard]] next Wednesday” lands in the matching future note under `## Project Tasks`.
+- A capture that does not resolve to a firm dated task lands in the current day `## Notes`.
