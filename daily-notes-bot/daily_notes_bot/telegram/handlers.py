@@ -15,9 +15,15 @@ from daily_notes_bot.services.daily_notes import (
 from daily_notes_bot.services.routing import route_capture
 from daily_notes_bot.telegram.authorization import is_authorized_user
 from daily_notes_bot.telegram.normalizer import normalize_capture_from_message
+from telegram.error import TelegramError, TimedOut
 
 
 LOGGER = logging.getLogger("daily_notes_bot.telegram")
+
+TELEGRAM_CONNECT_TIMEOUT_SECONDS = 20.0
+TELEGRAM_READ_TIMEOUT_SECONDS = 20.0
+TELEGRAM_WRITE_TIMEOUT_SECONDS = 20.0
+TELEGRAM_POOL_TIMEOUT_SECONDS = 5.0
 
 
 def apply_route(
@@ -59,6 +65,19 @@ async def process_message(message, config: Config) -> str:
     return outcome
 
 
+async def reply_text_safely(message, text: str) -> bool:
+    try:
+        await message.reply_text(text)
+    except TimedOut:
+        LOGGER.warning("Timed out while sending Telegram reply")
+        return False
+    except TelegramError:
+        LOGGER.exception("Failed to send Telegram reply")
+        return False
+
+    return True
+
+
 async def handle_message(update, context) -> None:
     config: Config = context.application.bot_data["config"]
     message = update.effective_message
@@ -73,19 +92,32 @@ async def handle_message(update, context) -> None:
 
     try:
         outcome = await process_message(message, config)
-        await message.reply_text(f"Captured to {outcome}.")
+        await reply_text_safely(message, f"Captured to {outcome}.")
     except Exception:
         LOGGER.exception("Failed to process message")
-        await message.reply_text("Capture failed. Check logs and configuration.")
+        await reply_text_safely(message, "Capture failed. Check logs and configuration.")
+
+
+async def handle_application_error(update, context) -> None:
+    LOGGER.error("Unhandled Telegram application error", exc_info=context.error)
 
 
 async def run_bot(config: Config) -> None:
     from telegram.ext import Application, MessageHandler, filters
 
-    application = Application.builder().token(config.telegram_bot_token).build()
+    application = (
+        Application.builder()
+        .token(config.telegram_bot_token)
+        .connect_timeout(TELEGRAM_CONNECT_TIMEOUT_SECONDS)
+        .read_timeout(TELEGRAM_READ_TIMEOUT_SECONDS)
+        .write_timeout(TELEGRAM_WRITE_TIMEOUT_SECONDS)
+        .pool_timeout(TELEGRAM_POOL_TIMEOUT_SECONDS)
+        .build()
+    )
     application.bot_data["config"] = config
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.VOICE, handle_message))
+    application.add_error_handler(handle_application_error)
     await application.initialize()
     await application.start()
     await application.updater.start_polling()

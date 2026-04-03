@@ -18,7 +18,8 @@ from daily_notes_bot.services.daily_notes import (
 )
 from daily_notes_bot.services.markdown import parse_sections
 from daily_notes_bot.services.routing import route_capture
-from daily_notes_bot.telegram.handlers import handle_message, process_message
+from daily_notes_bot.telegram.handlers import handle_message, process_message, reply_text_safely
+from telegram.error import TimedOut
 
 
 class DailyNotesBotTests(unittest.TestCase):
@@ -83,7 +84,7 @@ class DailyNotesBotTests(unittest.TestCase):
                     "- [ ] [[AZ-204 Dashboard]]",
                     "",
                     "## Habits",
-                    "- [ ] H\u00b2O 1.5L",
+                    "- [ ] H²O 1.5L",
                     "",
                 ]
             )
@@ -256,6 +257,14 @@ class DailyNotesBotTests(unittest.TestCase):
             ["- [ ] Do lab: deploy API to App Service for [[AZ-204 Dashboard]]"],
         )
 
+    def test_reply_text_safely_returns_false_on_timeout(self) -> None:
+        message = SimpleNamespace(reply_text=AsyncMock(side_effect=TimedOut("Timed out")))
+
+        result = self._run_async(reply_text_safely(message, "Captured to task."))
+
+        self.assertFalse(result)
+        message.reply_text.assert_awaited_once_with("Captured to task.")
+
     def test_handle_message_reads_config_from_context_application(self) -> None:
         message = SimpleNamespace(text="capture", voice=None, reply_text=AsyncMock())
         update = SimpleNamespace(
@@ -274,6 +283,28 @@ class DailyNotesBotTests(unittest.TestCase):
 
         process_message_mock.assert_awaited_once_with(message, self.config)
         message.reply_text.assert_awaited_once_with("Captured to task.")
+
+    def test_handle_message_does_not_retry_failed_reply_after_processing_error(self) -> None:
+        message = SimpleNamespace(
+            text="capture",
+            voice=None,
+            reply_text=AsyncMock(side_effect=TimedOut("Timed out")),
+        )
+        update = SimpleNamespace(
+            effective_message=message,
+            effective_user=SimpleNamespace(id=1),
+        )
+        context = SimpleNamespace(
+            application=SimpleNamespace(bot_data={"config": self.config}),
+        )
+
+        with patch(
+            "daily_notes_bot.telegram.handlers.process_message",
+            new=AsyncMock(side_effect=RuntimeError("boom")),
+        ):
+            self._run_async(handle_message(update, context))
+
+        message.reply_text.assert_awaited_once_with("Capture failed. Check logs and configuration.")
 
     def test_write_capture_log_prepends_newer_day(self) -> None:
         log_path = self.vault_path / "capture-log.md"
